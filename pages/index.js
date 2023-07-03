@@ -1,118 +1,180 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import { Authenticator } from "@aws-amplify/ui-react";
+import { Amplify, API, Auth, Hub } from 'aws-amplify'
+import Head from "next/head"
+import awsmobile from "@/src/aws-exports";
+import { createTodo, deleteTodo } from "@/src/graphql/mutations";
+import { listTodos } from "@/src/graphql/queries";
+import Todo from "@/components/Todo";
+import { useState } from "react";
+import { useEffect } from "react";
+import { FaPlus } from "react-icons/fa";
+import styles from '../styles.module.css'
 
-const inter = Inter({ subsets: ['latin'] })
+Amplify.configure({...awsmobile, ssr: true})
+
+
+class TodoObject {
+  constructor(title, id) {
+    this.title = title
+    this.done = false
+    this.id = id
+  }
+}
+
+const components = {
+  Header() {
+    return (
+      <div>
+        <h1 className={`text-center font-bold text-4xl py-8 ${styles.LoginHead}`}>Your Todo List</h1>
+      </div>
+    )
+  }
+}
 
 export default function Home() {
+
+  const [curTitle, setTitle] = useState(() => "") 
+  const [todoList, setList] = useState(() => [])
+  const [isIn, setIn] = useState(() => false)
+  const [outHover, setHover] = useState(() => false)
+  const [update, setUpdate] = useState(() => false)
+  const [addHover, setAddHover] = useState(false)
+
+  async function signOut() {
+    try {
+      await Auth.signOut()
+      setIn(false)
+      localStorage.setItem("in?", JSON.stringify(false))
+      setTitle("")
+      setList([])
+      setHover(false)
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  const handleAddTodo = async (username) => {
+    const {data} = await API.graphql({
+      query: createTodo,
+      variables: {
+        input: {
+          title: curTitle,
+          done: false,
+          user: username
+        }
+      },
+      authMode: 'AMAZON_COGNITO_USER_POOLS'
+    })
+
+    todoList.push(new TodoObject(data.createTodo.title, data.createTodo.id))
+    
+    setList(todoList)
+    setTitle("")
+    setAddHover(false)
+  }
+
+  const handleChange = (event) => {
+    setTitle(event.target.value)
+  }
+
+  const handleDone = (id) => {
+    for (let i = 0; i < todoList.length; i++) {
+      if (todoList[i].id === id) {
+        todoList[i].done = !todoList[i].done
+      }
+    }
+
+    setList(todoList)
+
+
+  }
+
+  useEffect(() => {
+    
+    const listener = (data) => {
+      if (data.payload.event === "signIn") {
+        setIn(true)
+        localStorage.setItem("in?", JSON.stringify(true))
+      }
+    }
+
+    Hub.listen("auth", listener)
+    
+  })
+
+  useEffect(() => {
+
+    const saved = localStorage.getItem("in?")
+    if (saved == "") {
+      setIn(false)
+    }
+    else {
+      const initValue = JSON.parse(saved)
+      setIn(initValue)
+    }
+    if (isIn) {
+      API.graphql({query: listTodos, authMode: "AMAZON_COGNITO_USER_POOLS"})
+          .then((res) => setList(res.data.listTodos.items))
+    }
+  }, [isIn])
+
+  const handleDelete = async (id) => {
+    for (let i = 0; i < todoList.length; i++) {
+      if (todoList[i].id === id) {
+        todoList.splice(i, 1)
+      }
+    }
+
+    setList(todoList)
+    setUpdate(!update)
+
+    const {data} = await API.graphql({
+      query: deleteTodo,
+      variables: {
+        input: {
+          id: id
+        }
+      },
+      authMode: 'AMAZON_COGNITO_USER_POOLS'
+    })
+
+  }
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    <div>
+      <Head>
+        <title>Todos</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <main className="flex h-screen">
+        <Authenticator className="m-auto" components={components}>
+          {({user}) => (
+            <div className=" w-3/4 lg:w-1/2 mx-auto my-10">
+              <div className="h-10">
+                <h1 className="font-bold text-4xl inline-block h-10 float-left">Hello, {user.username}</h1>
+                <button onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} className={`border-2 border-red-400 inline-block float-right h-10 px-3 text-md font-semibold rounded-lg ${outHover ? `text-white bg-red-400` : `bg-white text-red-400`}`} onClick={() => signOut()}>Sign out</button>
+              </div>
+              <hr className="h-0.5 my-5 bg-gray-100 border-0 dark:bg-gray-300"/>
+              <div className="h-12">
+                <input value={curTitle} onChange={handleChange} placeholder="Enter a todo" className="rounded-lg w-3/4 float-left h-full border px-3 my-0 inline-block" />
+                <button onMouseEnter={() => setAddHover(true)} onMouseLeave={() => setAddHover(false)} disabled={curTitle === ""} onClick={() => handleAddTodo(user.username)} className={`bg-green-400 ${curTitle === "" ? "opacity-50" : "opacity-100"} float-right rounded-lg h-full px-8`}>
+                  <FaPlus className={`text-white ${addHover ? styles.FaPlusHover : styles.FaPlus}`} />
+                </button>
+              </div>
+              {todoList.length == 0 ? 
+                <i className="my-5 block text-center text-gray-400">No todos</i>
+              :
+                todoList.map((item) => (
+                  <div key={item.id}>
+                    <Todo handleDelete={() => handleDelete(item.id)} handleDone={() => handleDone(item.id)} title={item.title} done={item.done} id={item.id} />
+                    <hr />
+                  </div>
+                ))
+              }
+            </div>
+          )}
+        </Authenticator>
+      </main>
+    </div>
   )
 }

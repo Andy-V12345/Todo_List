@@ -1,0 +1,21 @@
+.FaTrashAlt:hover {
+    transform: scale(1.1);
+    transition: 0.2s ease-in-out;
+}
+
+.FaTrashAlt {
+    transition: 0.2s ease-in-out;
+}
+
+.FaPlusHover {
+    transform: rotate(90deg);
+    transition: 0.3s ease-in-out;
+}
+
+.FaPlus {
+    transition: 0.3s ease-in-out;
+}
+
+.LoginHead {
+    color: #027D95;
+}
