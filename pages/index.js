@@ -146,13 +146,20 @@ export default function Home() {
         <title>Todos</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="flex h-screen">
+      <main className="h-screen absolute w-screen overflow-hidden">
         <Authenticator className="m-auto" components={components}>
           {({user}) => (
-            <div className=" w-3/4 lg:w-1/2 mx-auto my-10">
-              <div className="h-10">
-                <h1 className="font-bold text-4xl inline-block h-10 float-left">Hello, {user.username}</h1>
-                <button onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} className={`border-2 border-red-400 inline-block float-right h-10 px-3 text-md font-semibold rounded-lg ${outHover ? `text-white bg-red-400` : `bg-white text-red-400`}`} onClick={() => signOut()}>Sign out</button>
+            <div className=" md:w-3/4 w-11/12 lg:w-1/2 mx-auto my-10 min-h-full">
+              
+              <div className="relative h-10 w-full">
+                <h1 className={`font-bold text-3xl sm:text-4xl inline-block float-left ${styles.Greeting}`}>Hello, {user.username}</h1>
+                <button 
+                  onMouseEnter={() => setHover(true)} 
+                  onMouseLeave={() => setHover(false)} 
+                  className={`border-2 border-red-400 inline-block float-right h-10 px-3 text-md font-semibold rounded-lg ${outHover ? `text-white bg-red-400` : `bg-white text-red-400`}`} 
+                  onClick={() => signOut()}>
+                    Sign out
+                </button>
               </div>
               <hr className="h-0.5 my-5 bg-gray-100 border-0 dark:bg-gray-300"/>
               <div className="h-12">
